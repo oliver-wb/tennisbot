@@ -1,14 +1,18 @@
 services:
   - type: cron
     name: sunday-tennis-booking
-    env: docker
+    runtime: node
     schedule: "0 9 * * 0"  # Run at 9am every Sunday
-    dockerCommand: node dist/index.js
+    buildCommand: |
+      apt-get update && apt-get install -y libgtk-4-1 libgraphene-1.0-0 libgstgl-1.0-0 libgstcodecparsers-1.0-0 libavif15 libenchant-2-2 libsecret-1-0 libmanette-0.2-0 libgles2
+      npm install
+      npx playwright install chromium
+    startCommand: node src/index.js
     envVars:
       - key: REC_US_EMAIL
-        value: oliverbraly@gmail.com
+        sync: false
       - key: REC_US_PASSWORD
-        value: UOzP7gKELznJBg
+        sync: false
       - key: DAY_OF_WEEK
         value: Sunday
       - key: EARLIEST_TIME
@@ -16,14 +20,20 @@ services:
 
   - type: cron
     name: friday-tennis-booking
-    env: docker
-    schedule: "0 12 * * 5"  # Run at 12pm every Friday
-    dockerCommand: node dist/index.js
+    runtime: node
+    # schedule: "0 12 * * 5"  # Run at 12pm every Friday
+    # for testing
+    schedule: "* * * * *"
+    buildCommand: |
+      apt-get update && apt-get install -y libgtk-4-1 libgraphene-1.0-0 libgstgl-1.0-0 libgstcodecparsers-1.0-0 libavif15 libenchant-2-2 libsecret-1-0 libmanette-0.2-0 libgles2
+      npm install
+      npx playwright install chromium
+    startCommand: node src/index.js
     envVars:
       - key: REC_US_EMAIL
-        value: oliverbraly@gmail.com
+        sync: false
       - key: REC_US_PASSWORD
-        value: UOzP7gKELznJBg
+        sync: false
       - key: DAY_OF_WEEK
         value: Sunday
       - key: EARLIEST_TIME
