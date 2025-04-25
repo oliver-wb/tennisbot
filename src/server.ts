@@ -11,28 +11,37 @@ app.use(express.static('public'));
 let verificationCode: string | null = null;
 let codeResolve: ((code: string) => void) | null = null;
 
-// Endpoint to get the verification code
-app.get('/api/code', (req, res) => {
-  if (verificationCode) {
-    res.json({ code: verificationCode });
-    verificationCode = null;
-  } else {
-    res.status(404).json({ error: 'No code available' });
-  }
-});
+// Explicitly handle favicon.ico
+app.get('/favicon.ico', (req, res) => res.status(204));
 
-// Endpoint to set the verification code
-app.post('/api/code', (req, res) => {
-  const { code } = req.body;
+// Handle verification code in URL path
+app.get('/:code', (req, res) => {
+  const code = req.params.code;
+  
+  // Ignore browser-specific requests
+  if (['favicon.ico', 'apple-touch-icon.png', 'robots.txt'].includes(code)) {
+    res.status(204).end();
+    return;
+  }
+
+  console.log('CODE RECEIVED:', code);
   if (code) {
-    verificationCode = code;
-    if (codeResolve) {
-      codeResolve(code);
-      codeResolve = null;
+    // Extract only numbers from the code
+    const matches = code.match(/\d+/g);
+    const cleanCode = matches ? matches.join('') : '';
+    
+    if (cleanCode) {
+      verificationCode = cleanCode;
+      if (codeResolve) {
+        codeResolve(cleanCode);
+        codeResolve = null;
+      }
+      res.send('Code received: ' + cleanCode);
+    } else {
+      res.status(400).send('Invalid code format');
     }
-    res.json({ success: true });
   } else {
-    res.status(400).json({ error: 'Code is required' });
+    res.status(400).send('No code provided');
   }
 });
 

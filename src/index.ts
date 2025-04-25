@@ -6,6 +6,7 @@ import { startServer, waitForCode } from './server';
 dotenv.config();
 
 const courtUrls = [
+  // "https://www.rec.us/locations/81cd2b08-8ea6-40ee-8c89-aeba92506576",
   "https://www.rec.us/locations/c41c7b8f-cb09-415a-b8ea-ad4b82d792b9",
 ]
 
@@ -34,10 +35,16 @@ async function main() {
 
     // Fill in the login form
     await page.fill('input[name="email"]', process.env.REC_US_EMAIL || '');
+    await page.waitForSelector('input[name="password"]', { timeout: 5000 });
     await page.fill('input[name="password"]', process.env.REC_US_PASSWORD || '');
 
-    // TODO: Add submit button click
-    // await page.click('button[type="submit"]');
+    // Click login and wait for navigation
+    await Promise.all([
+      page.waitForSelector('p.text-\\[0\\.875rem\\].font-medium:has-text("Oliver")'),
+      page.click('button.uppercase[type="submit"]:has-text("log in & continue")')
+    ]);
+
+    console.log('Logged in');
 
     // Now visit each court URL with the same logged-in context
     for (const courtUrl of courtUrls) {
@@ -76,17 +83,28 @@ async function main() {
         hour12: true
       });
 
-      // Wait for and click the time slot closest to current time
-      await page.waitForSelector(`button:has-text("${targetTimeString}")`);
-      await page.click(`button:has-text("${targetTimeString}")`);
+      // Try to find and click the preferred time slot, if not available, click any time slot
+      try {
+        await page.waitForSelector(`button:has-text("${targetTimeString}")`, { timeout: 2000 });
+        await page.click(`button:has-text("${targetTimeString}")`);
+      } catch (error) {
+        // If preferred time not found, click the first available time slot
+        console.log('Preferred time not found, selecting first available slot');
+        const timeSlots = await page.$$('button p.text-\\[0\\.875rem\\]:has-text("AM"), button p.text-\\[0\\.875rem\\]:has-text("PM")');
+        if (timeSlots.length > 0) {
+          await timeSlots[0].click();
+        } else {
+          throw new Error('No time slots available');
+        }
+      }
 
       // Click the participant dropdown
-      await page.waitForSelector('[id^="headlessui-listbox-button-:r6s:"]');
-      await page.click('[id^="headlessui-listbox-button-:r6s:"]');
+      await page.waitForSelector('[id^="headlessui-listbox-button-"]');
+      await page.click('[id^="headlessui-listbox-button-"]');
 
       // Wait for and click the participant option
-      await page.waitForSelector('[id^="headlessui-listbox-option-:r7d:"]');
-      await page.click('[id^="headlessui-listbox-option-:r7d:"]');
+      await page.waitForSelector('[id^="headlessui-listbox-option-"]');
+      await page.click('[id^="headlessui-listbox-option-"]');
 
       // Wait for and click the Book button
       await page.waitForSelector('button:has-text("Book")');
@@ -105,6 +123,8 @@ async function main() {
 
       // Fill in the verification code
       await page.fill('input[type="number"]', code);
+      // Click the confirm button
+      // await page.click('button:has-text("Confirm")');
 
       // Keep the browser open for debugging
       await page.pause();
