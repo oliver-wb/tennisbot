@@ -10,6 +10,49 @@ const courtUrls = [
   "https://www.rec.us/locations/c41c7b8f-cb09-415a-b8ea-ad4b82d792b9",
 ]
 
+// Get the target day and time from environment variables
+const TARGET_DAY = process.env.DAY_OF_WEEK || 'Sunday';
+const EARLIEST_TIME = process.env.EARLIEST_TIME || '12:00 PM';
+
+function getTargetDate(): Date {
+  const now = new Date();
+  const currentHour = now.getHours();
+  const currentDay = now.getDay(); // 0 = Sunday, 1 = Monday, etc.
+  
+  // Convert target day string to number (0-6)
+  const targetDayNum = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday']
+    .indexOf(TARGET_DAY.toLowerCase());
+  
+  if (targetDayNum === -1) {
+    throw new Error(`Invalid day of week: ${TARGET_DAY}`);
+  }
+
+  // Calculate days until target day
+  let daysUntilTarget = targetDayNum - currentDay;
+  if (daysUntilTarget <= 0) {
+    daysUntilTarget += 7; // Move to next week if target day has passed
+  }
+
+  // If it's after noon (12:00), try booking 2 days ahead
+  // If it's before 9am, try booking a week ahead
+  let targetDate = new Date();
+  if (currentHour >= 12) {
+    // Try booking 2 days ahead
+    targetDate.setDate(now.getDate() + 2);
+    console.log('After noon, booking 2 days ahead:', targetDate.toLocaleDateString());
+  } else if (currentHour >= 9) {
+    // Try booking a week ahead
+    targetDate.setDate(now.getDate() + 7);
+    console.log('Before 9am, booking a week ahead:', targetDate.toLocaleDateString());
+  } else {
+    // Default to the next occurrence of the target day
+    targetDate.setDate(now.getDate() + daysUntilTarget);
+    console.log('Default booking for next target day:', targetDate.toLocaleDateString());
+  }
+
+  return targetDate;
+}
+
 async function main() {
   // Start the web server
   const server = await startServer();
@@ -54,9 +97,8 @@ async function main() {
       await page.waitForSelector('.react-datepicker__input-container input');
       await page.click('.react-datepicker__input-container input');
 
-      // Calculate the target date (2 days from now)
-      const targetDate = new Date();
-      targetDate.setDate(targetDate.getDate() + 2);
+      // Get the target date
+      const targetDate = getTargetDate();
       const targetDay = targetDate.getDate();
       const targetMonth = targetDate.getMonth() + 1; // Months are 0-based
       const targetYear = targetDate.getFullYear();
@@ -67,26 +109,10 @@ async function main() {
       // Click the target date in the datepicker
       await page.click(`[aria-label="${targetDateString}"]`);
 
-      // Calculate the target time (nearest half hour)
-      const now = new Date();
-      const minutes = now.getMinutes();
-      const roundedMinutes = Math.round(minutes / 30) * 30;
-      const targetTime = new Date(now);
-      targetTime.setMinutes(roundedMinutes);
-      targetTime.setSeconds(0);
-      targetTime.setMilliseconds(0);
-
-      // Format the time to match the button text format
-      const targetTimeString = targetTime.toLocaleTimeString('en-US', {
-        hour: 'numeric',
-        minute: '2-digit',
-        hour12: true
-      });
-
-      // Try to find and click the preferred time slot, if not available, click any time slot
+      // Try to find and click the preferred time slot
       try {
-        await page.waitForSelector(`button:has-text("${targetTimeString}")`, { timeout: 2000 });
-        await page.click(`button:has-text("${targetTimeString}")`);
+        await page.waitForSelector(`button:has-text("${EARLIEST_TIME}")`, { timeout: 2000 });
+        await page.click(`button:has-text("${EARLIEST_TIME}")`);
       } catch (error) {
         // If preferred time not found, click the first available time slot
         console.log('Preferred time not found, selecting first available slot');
