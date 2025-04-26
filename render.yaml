@@ -18,9 +18,9 @@ services:
     name: friday-tennis-booking
     env: docker
     dockerfilePath: ./Dockerfile
-    # schedule: "0 12 * * 5"  # Run at 12pm every Friday
+    schedule: "0 12 * * 5"  # Run at 12pm every Friday
     # for testing
-    schedule: "* * * * *"
+    # schedule: "* * * * *"
     envVars:
       - key: REC_US_EMAIL
         sync: false
